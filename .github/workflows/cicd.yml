@@ -1,36 +1,80 @@
-# This is a basic workflow to help you get started with Actions
+name: Publish to Nuget
 
-name: CI
+# Trigger publish to Nuget when we push a tag on main branch
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: 
+      - "main"
+    tags: 
+      - "*"
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
+    name: Build and deploy to NuGet
+    if: github.event_name == 'push' # Perform workflow ONLY if the main event that triggered it was a push event.
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: List files (for debugging)
+        run: ls -R
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Define version
+        id: version_definition
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          echo "The tag name is ${{ github.ref_name }}"
+          $regex = '^(?<majorVersion>\d+)(?:\.(?<minorVersion>\d+))?(?:\.(?<patchVersion>\d+))?(?:-(?<preReleaseTag>[a-zA-Z]+)(?:\.(?<preReleaseVersion>\d+))?)?$'
+          if ("${{ github.ref_name }}" -notmatch $regex) {
+            Write-Host "Tag ${{ github.ref_name }} does not match regex."
+            exit 1
+          }
+          $major = $matches.majorVersion
+          $minor = $matches.minorVersion ? $matches.minorVersion : 0
+          $patch = $matches.patchVersion ? $matches.patchVersion : 0
+          $buildConfiguration = 0
+          $ProductVersion = "${{ github.ref_name }}"
+          $AssemblyVersion = "$major.$minor.$buildConfiguration.$patch"
+          # Write-Host "##[set-output name=AssemblyVersion;]$AssemblyVersion"
+          Write-Host "Product version is $ProductVersion, assembly version is $AssemblyVersion"
+          "product_version=$ProductVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          "assembly_version=$AssemblyVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build the project
+        run: |
+          $ProductVersion = "${{ steps.version_definition.outputs.product_version }}"
+          $AssemblyVersion = "${{ steps.version_definition.outputs.assembly_version }}"
+          Write-Host "FROM PREVIOUS STEP: Product version is $ProductVersion, assembly version is $AssemblyVersion"
+          dotnet build --configuration Release --no-restore -p:Version="$ProductVersion" -p:AssemblyVersion="$AssemblyVersion"
+
+      - name: Generate the nuget package
+        run: |
+          $ProductVersion = "${{ steps.version_definition.outputs.product_version }}"
+          $AssemblyVersion = "${{ steps.version_definition.outputs.assembly_version }}"
+          Write-Host "FROM PREVIOUS STEP: Product version is $ProductVersion, assembly version is $AssemblyVersion"
+          dotnet pack --configuration Release --no-build --output ./dist -p:PackageVersion="$ProductVersion"
+
+      - name: Push to NuGet
+        if: vars.PUBLISH_TO_NUGET_ORG == 'true'
+        run: |
+          dotnet nuget push "./dist/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: dist/
+
+      - name: List files (for debugging)
+        run: ls -R
