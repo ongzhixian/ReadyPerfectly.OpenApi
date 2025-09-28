@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <!-- PACKAGE/MSIL -->
+        <Company>Ong Zhi Xian</Company>
+        <Authors>Ong Zhi Xian</Authors>
+        <Description>ReadyPerfectly enhancements to OpenApi</Description>
+        <Title>ReadyPerfectly OpenApi</Title>
+        <PackageTags>readyperfectly; classlib; openapi;</PackageTags>
+        <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+
+        <!-- ASSEMBLYINFO EQUIVALENT AFFECTING FILE PROPERTIES -->
+        <Copyright>Copyright © 2025 Ong Zhi Xian. All Rights Reserved.</Copyright>
+        <Product>ReadyPerfectly OpenApi</Product>
+        <AssemblyTitle>Enhancements to OpenApi for ReadyPerfectly products</AssemblyTitle>
+
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+        
+        <!-- Upgrade Note: 
+             Ensure that the version of Microsoft.OpenApi matches the one ine Microsoft.AspNetCore.OpenApi 
+             before you upgrade. Otherwise you might end up with conflicting namespace just because there are 2 versions.
+        -->
+        <PackageReference Include="Microsoft.OpenApi" Version="1.6.25" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+
+</Project>
